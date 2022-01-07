@@ -48,12 +48,12 @@ def calculate_tf_idf(target_columns,df_len,file_path=f'./workport_tokyo_エン�
 def main(job_type,target_columns,is_morphological_analysis,is_tfidf_analysis):
     abs_cur_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)))
 
-    df_relative_path = f'/../../got_data/workport_tokyo_{job_type}.csv'
+    df_relative_path = f'/../got_data/workport_tokyo_{job_type}.csv'
     master_df_file_path = abs_cur_dir + df_relative_path
     master_df = pd.read_csv(master_df_file_path,encoding=const.ENCODING)
 
     DF_LEN = len(master_df)
-    csv_relative_path = f'/../../got_data/workport_tokyo_エンジニア_前処理後.csv'
+    csv_relative_path = f'/../got_data/workport_tokyo_エンジニア_前処理後.csv'
     RESULT_PATH = abs_cur_dir + csv_relative_path
 
     if is_morphological_analysis:
@@ -61,7 +61,7 @@ def main(job_type,target_columns,is_morphological_analysis,is_tfidf_analysis):
     if is_tfidf_analysis:
         result_obj = calculate_tf_idf(target_columns,DF_LEN,RESULT_PATH)
 
-        bin_relative_path = f'/../../got_data/{const.TF_IDF_RESULT_FILE}'
+        bin_relative_path = f'/../got_data/{const.TF_IDF_RESULT_FILE}'
         result_path = abs_cur_dir + bin_relative_path
         with open(result_path, 'wb') as f:
             pickle.dump(result_obj, f)

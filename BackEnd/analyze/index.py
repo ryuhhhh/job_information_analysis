@@ -3,20 +3,22 @@ import pandas as pd
 import os
 import pickle
 import sys
-sys.path.append(os.path.join('..', 'common'))
-import util
-import const
+sys.path.append('.')
+from common import util
+from common import const
 import numpy as np
 
-def calculate_tf_idf_from_text(text_obj):
+def calculate_tf_idf_from_text(text_obj,tfidf_path):
     """
     文字列を渡したときにそのtf-idf値を計算
     """
-    with open(f'./../../{const.TF_IDF_RESULT_FILE}', 'rb') as f:
+    with open(tfidf_path, 'rb') as f:
         if_idf = pickle.load(f)
+    result_obj = {}
     for key,text in text_obj.items():
         if not text:
             continue
+        result_obj[key] = []
         morphological_analysis_result = util.morphological_analysis(text)
         # textを形態素解析し単語ごとに区切る
         noun_list = util.get_noun_list_from_mecab_result(morphological_analysis_result)
@@ -33,10 +35,13 @@ def calculate_tf_idf_from_text(text_obj):
         feature_matrix = if_idf[key]['feature_matrix']
         # cos類似度を求める [1 x 単語数] と [単語数 x 全文書数]
         cos_sim_result = calculate_cos_similarity(tfidf_vec,feature_matrix.T)
-        for i in range(len(cos_sim_result)):
-            if i>3:
-                break
-            print (np.argsort(cos_sim_result)[::-1][i], np.sort(cos_sim_result)[::-1][i])
+
+        # 結果を類似度上位10件返却する
+        for i in range(10):
+            target_row_num = np.argsort(cos_sim_result)[::-1][i]
+            result_obj[key].append(target_row_num)
+
+    return result_obj
 
 def calculate_tfidf(tf_obj,idf_words,idf_values):
     tfidf_list = np.array([])
@@ -50,6 +55,42 @@ def calculate_tfidf(tf_obj,idf_words,idf_values):
 
 def calculate_cos_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
+def main(job_type,job_description,qualification,company_info,salary):
+    # csv読み込み
+    abs_cur_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)))
+    df_relative_path = f'/../got_data/workport_tokyo_{job_type}.csv'
+    tfidf_relative_path = f'/../got_data/{const.TF_IDF_RESULT_FILE}'
+    master_df_path = abs_cur_dir + df_relative_path
+    tfidf_path = abs_cur_dir + tfidf_relative_path
+    if os.path.exists(master_df_path):
+        job_info_df = pd.read_csv(master_df_path,encoding=ENCODING)
+    else:
+        print('ファイルが存在しません。')
+        exit()
+
+    result_obj = calculate_tf_idf_from_text({'job_description':job_description,\
+                                             'qualification':qualification,\
+                                             'company_info':company_info},\
+                                             tfidf_path)
+
+    return_obj = {}
+    for key,item in result_obj.items():
+        target_df_rows = job_info_df.iloc[item]
+        return_obj[key] = target_df_rows[target_df_rows['salary_from']>=salary]
+
+    # 結果出力
+    for key,df in return_obj.items():
+        print(f'{key}の結果')
+        for index,row in df.iterrows():
+            print(f'------')
+            print(f'会社名: {row["company_name"]}\n\
+                    求人名: {row["job_name"]}\n\
+                    給与: {row["salary_from"]}~{row["salary_to"]}\n\
+                    URL: {row["url"]}')
+            print(f'------')
+
+    return result_obj
 
 if __name__ == "__main__":
     """
@@ -71,18 +112,5 @@ if __name__ == "__main__":
     salary = args.salary
     ENCODING = 'utf-8-sig'
 
-    # csv読み込み
-    master_df_path = f'./../../workport_tokyo_{job_type}.csv'
-    if os.path.exists(master_df_path):
-        job_info_df = pd.read_csv(master_df_path,encoding=ENCODING)
-    else:
-        print('ファイルが存在しません。')
-        exit()
-
-    # 年収で絞り込み
-    if salary:
-        job_info_df = job_info_df[job_info_df['salary_from']>salary]
-
-    calculate_tf_idf_from_text({'job_description':job_description,\
-                                'qualification':qualification,\
-                                'company_info':company_info})
+    # 求人情報の職務情報や
+    main(job_type,job_description,qualification,company_info,salary)

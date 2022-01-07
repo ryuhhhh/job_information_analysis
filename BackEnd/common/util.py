@@ -1,6 +1,8 @@
 import pandas as pd
 import MeCab
-import const
+import sys
+sys.path.append('..')
+from common import const
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer

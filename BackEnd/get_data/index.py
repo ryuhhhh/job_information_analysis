@@ -18,7 +18,7 @@ def main(company_list,search_word,job_info_num,is_online=False):
     print(f'{company_list}を"{search_word}"で{job_info_num}件検索します。')
 
     abs_cur_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)))
-    df_relative_path = f'/../../got_data/workport_tokyo_{search_word}.csv'
+    df_relative_path = f'/../got_data/workport_tokyo_{search_word}.csv'
     master_df_path = abs_cur_dir + df_relative_path
     if os.path.exists(master_df_path):
         job_info_df_master = pd.read_csv(master_df_path,encoding=ENCODING)
