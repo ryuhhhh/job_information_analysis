@@ -10,38 +10,34 @@ import numpy as np
 
 def calculate_tf_idf_from_text(text_obj,tfidf_path):
     """
-    文字列を渡したときにそのtf-idf値を計算
+    文字列を渡したときにそのtf-idf値を計算し
+    上位10件を返却
     """
     with open(tfidf_path, 'rb') as f:
-        if_idf = pickle.load(f)
-    result_obj = {}
+        tf_idf = pickle.load(f)
+    cos_sim_result_obj = {}
     for key,text in text_obj.items():
         if not text:
             continue
-        result_obj[key] = []
         morphological_analysis_result = util.morphological_analysis(text)
         # textを形態素解析し単語ごとに区切る
         noun_list = util.get_noun_list_from_mecab_result(morphological_analysis_result)
-        # tfを取得
+        # tfを算出
         tf_obj = {}
         for noun in noun_list:
             tf_obj[noun] = noun_list.count(noun) / len(noun_list)
         # idfを取得
-        idf_words = if_idf[key]['word_list']
-        idf_values = if_idf[key]['idf']
-        # tf-idfベクトルを取得(1x単語数)
+        idf_words = tf_idf[key]['word_list']
+        idf_values = tf_idf[key]['idf']
+        # tf-idfベクトルを取得(1 x 単語数)
         tfidf_vec = calculate_tfidf(tf_obj,idf_words,idf_values)
         # TF-IDFの結果を取得(文書数x単語数で作成されている)
-        feature_matrix = if_idf[key]['feature_matrix']
+        feature_matrix = tf_idf[key]['feature_matrix']
         # cos類似度を求める [1 x 単語数] と [単語数 x 全文書数]
         cos_sim_result = calculate_cos_similarity(tfidf_vec,feature_matrix.T)
+        cos_sim_result_obj[key] = cos_sim_result
 
-        # 結果を類似度上位10件返却する
-        for i in range(10):
-            target_row_num = np.argsort(cos_sim_result)[::-1][i]
-            result_obj[key].append(target_row_num)
-
-    return result_obj
+    return cos_sim_result_obj
 
 def calculate_tfidf(tf_obj,idf_words,idf_values):
     tfidf_list = np.array([])
@@ -69,28 +65,41 @@ def main(job_type,job_description,qualification,company_info,salary):
         print('ファイルが存在しません。')
         exit()
 
-    result_obj = calculate_tf_idf_from_text({'job_description':job_description,\
+    cos_sim_result_obj = calculate_tf_idf_from_text({'job_description':job_description,\
                                              'qualification':qualification,\
                                              'company_info':company_info},\
                                              tfidf_path)
 
-    return_obj = {}
-    for key,item in result_obj.items():
-        target_df_rows = job_info_df.iloc[item]
-        return_obj[key] = target_df_rows[target_df_rows['salary_from']>=salary]
+    # リストへ結果の積を求めていく。最初の値として1を指定。
+    all_crossed_list = 1
+    # 年収でフィルタ
+    for key,item in cos_sim_result_obj.items():
+        if not len(item):
+            continue
+        # 全要素を掛け算
+        all_crossed_list *= item
+
+    # 結果を類似度上位10件返却する
+    RESULT_RANK_NUM = 10
+    result_rank_list = []
+    for i in range(RESULT_RANK_NUM):
+        target_row_num = np.argsort(all_crossed_list)[::-1][i]
+        result_rank_list.append(target_row_num)
+
+    # 上位10件抜き出して年収でフィルタ
+    target_df_rows = job_info_df.iloc[result_rank_list]
+    salary_filterd_target_df = target_df_rows[target_df_rows['salary_from']>=salary]
 
     # 結果出力
-    for key,df in return_obj.items():
-        print(f'{key}の結果')
-        for index,row in df.iterrows():
-            print(f'------')
-            print(f'会社名: {row["company_name"]}\n\
-                    求人名: {row["job_name"]}\n\
-                    給与: {row["salary_from"]}~{row["salary_to"]}\n\
-                    URL: {row["url"]}')
-            print(f'------')
+    for index,row in salary_filterd_target_df.iterrows():
+        print(f'------')
+        print(f'会社名: {row["company_name"]}\n\
+                求人名: {row["job_name"]}\n\
+                給与: {row["salary_from"]}~{row["salary_to"]}\n\
+                URL: {row["url"]}')
+        print(f'------')
 
-    return result_obj
+    return salary_filterd_target_df
 
 if __name__ == "__main__":
     """

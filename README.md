@@ -34,5 +34,5 @@
 2. 取得した求人情報を形態素解析およびTFIDF値を取得
    * python treat_data/index.py --job-type エンジニア --is-morphological-analysis --is-tfidf-analysis
 3. 文章を入力し類似している求人情報を取得
-   * python analyze/index.py --job-type "エンジニア" --qualification "基本情報技術者・Python経験・機械学習経験・クラウドの利用・統計検定2" --salary 500
+   * python analyze/index.py  --job-type エンジニア --job-description "機械学習、ディープラーニング、モデルの構築、R&D" --qualification "未経験(ポテンシャル)OKだが、統計学や機械学習や数学の知識は必須。統計検定なおよし。"
    * 上記コマンド例では年収500万以上の求人を出力
